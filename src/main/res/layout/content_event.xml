@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context="gambit.gambit.MainActivity"
+    tools:showIn="@layout/activity_event">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:weightSum="3"
+        android:orientation="vertical">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="2.4"
+        android:layout_alignParentTop="true">
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextAccessKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+        <EditText
+            android:id="@+id/editTextAccessKey"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:hint="Access Key"/>
+        </android.support.design.widget.TextInputLayout>
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextClientSalt"
+            android:layout_width="match_parent"
+            android:layout_below="@+id/inputEditTextAccessKey"
+            android:layout_height="wrap_content">
+        <EditText
+            android:id="@+id/editTextClientSalt"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:hint="Client Salt"/>
+        </android.support.design.widget.TextInputLayout>
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextClientSecret"
+            android:layout_width="match_parent"
+            android:layout_below="@+id/inputEditTextClientSalt"
+            android:layout_height="wrap_content">
+        <EditText
+            android:id="@+id/editTextClientSecret"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:hint="Client Secret"/>
+        </android.support.design.widget.TextInputLayout>
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextCampaignID"
+            android:layout_width="match_parent"
+            android:layout_below="@+id/inputEditTextClientSecret"
+            android:layout_height="wrap_content">
+        <EditText
+            android:id="@+id/editTextCampaignID"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:hint="Campaign ID"/>
+        </android.support.design.widget.TextInputLayout>
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextEventName"
+            android:layout_width="match_parent"
+            android:layout_below="@+id/inputEditTextCampaignID"
+            android:layout_height="wrap_content">
+            <EditText
+                android:id="@+id/editTextEventName"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:hint="Event Name"/>
+        </android.support.design.widget.TextInputLayout>
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:text="Debug Directive"
+            android:layout_below="@+id/inputEditTextEventName"
+            android:checked="false"
+            android:id="@+id/buttonDebugDirective" />
+
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextNamespace"
+            android:layout_width="match_parent"
+            android:layout_below="@+id/buttonDebugDirective"
+            android:layout_height="wrap_content">
+            <EditText
+                android:id="@+id/editTextNamespace"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:hint="Namespace"/>
+        </android.support.design.widget.TextInputLayout>
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/inputEditTextAttributes"
+            android:layout_width="match_parent"
+            android:layout_below="@+id/inputEditTextNamespace"
+            android:layout_height="wrap_content">
+        <EditText
+            android:id="@+id/editTextAttributes"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:hint="Attributes as JSON"
+            android:text="@string/attributes"
+            />
+        </android.support.design.widget.TextInputLayout>
+
+
+
+    </RelativeLayout>
+
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.2">
+
+        <LinearLayout
+            android:id="@+id/linearLayoutMssage"
+            android:layout_width="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_centerHorizontal="true">
+
+            <TextView
+                android:id="@+id/textViewMessageLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Message:"
+                android:textSize="20sp"
+                android:textColor="#000000"/>
+            <TextView
+                android:id="@+id/textViewMessageDescription"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#000000"/>
+        </LinearLayout>
+
+    </RelativeLayout>
+    </LinearLayout>
+</RelativeLayout>
