@@ -12,7 +12,7 @@ apply plugin: 'com.android.application'
 
 android {
   compileSdkVersion 22
-  buildToolsVersion "22.0.1"
+  buildToolsVersion "23.0.3"
 
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_1_7
@@ -41,7 +41,6 @@ android {
 
 repositories {
   jcenter()
-  mavenCentral()
   mavenLocal()
 }
 
@@ -49,7 +48,7 @@ dependencies {
   compile 'com.android.support:multidex:1.0.1'
   compile 'com.android.support:appcompat-v7:22.0.0'
   compile 'com.android.support:design:22.2.1'
-  compile 'io.cogswell:cogs-android-client-sdk:1.0.5'
+  compile 'io.cogswell:cogs-android-client-sdk:1.0.+'
 }
 
 group = 'io.cogswell'
