@@ -126,13 +126,13 @@
         <Button
             android:layout_width="150dp"
             android:layout_height="wrap_content"
-            android:text="register push"
+            android:text="Subscribe"
             android:id="@+id/buttonRegisterPush"
             android:layout_alignParentLeft="true"/>
         <Button
             android:layout_width="150dp"
             android:layout_height="wrap_content"
-            android:text="unregister push"
+            android:text="Unsubscribe"
             android:id="@+id/buttonUnregisterPush"
             android:layout_alignParentRight="true"/>
 

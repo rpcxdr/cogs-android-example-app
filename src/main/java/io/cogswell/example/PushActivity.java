@@ -1,8 +1,10 @@
 package io.cogswell.example;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -26,12 +28,12 @@ import android.widget.RelativeLayout;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 
+import io.cogswell.example.notifications.QuickstartPreferences;
+import io.cogswell.example.notifications.RegistrationIntentService;
 import io.cogswell.sdk.GambitRequest;
 import io.cogswell.sdk.GambitSDKService;
 import io.cogswell.sdk.message.GambitRequestMessage;
 import io.cogswell.sdk.message.GambitResponseMessage;
-import io.cogswell.sdk.notifications.QuickstartPreferences;
-import io.cogswell.sdk.notifications.RegistrationIntentService;
 import io.cogswell.sdk.push.GambitRequestPush;
 import io.cogswell.sdk.push.GambitResponsePush;
 import io.cogswell.sdk.request.GambitRequestEvent;
@@ -173,6 +175,24 @@ public class PushActivity extends AppCompatActivity  {
                 response = (GambitResponsePush) future.get();
 
                 Log.d("response 2", String.valueOf(response.getMessage()));
+                final String message = response.getRawBody();
+                Log.d("response", String.valueOf(response.getRawBody()));
+                activity.runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (!message.equals("") && message != null && !message.isEmpty()) {
+                            new AlertDialog.Builder(activity)
+                                    .setTitle("Please Note!")
+                                    .setMessage(message)
+                                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+
+                                        }
+                                    })
+                                    .setIcon(android.R.drawable.ic_dialog_alert)
+                                    .show();
+                        }
+                    }
+                });
 
             } catch (InterruptedException | ExecutionException ex) {
                 ex.printStackTrace();
@@ -221,8 +241,24 @@ public class PushActivity extends AppCompatActivity  {
             GambitResponsePush response;
             try {
                 response = (GambitResponsePush) future.get();
+                final String message = response.getRawBody();
+                Log.d("response", String.valueOf(response.getMessage()));
+                activity.runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (!message.equals("") && message != null && !message.isEmpty()) {
+                            new AlertDialog.Builder(activity)
+                                    .setTitle("Please Note!")
+                                    .setMessage(message)
+                                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
 
-                Log.d("response", String.valueOf(response.getRawBody()));
+                                        }
+                                    })
+                                    .setIcon(android.R.drawable.ic_dialog_alert)
+                                    .show();
+                        }
+                    }
+                });
 
             } catch (InterruptedException | ExecutionException ex) {
                 ex.printStackTrace();
@@ -355,7 +391,41 @@ public class PushActivity extends AppCompatActivity  {
             editTextNamespace.setText(parameters.namespaceName);
         }
     }
+    public void validateFields() {
 
+        String message = null;
+        if (accessKey == null || accessKey.equals("") || accessKey.isEmpty()) {
+            message = "Access Key is Missing!";
+        }
+        if (clientSalt == null || clientSalt.equals("") || clientSalt.isEmpty()) {
+            message = "Client Salt is Missing!";
+        }
+        if (clientSecret == null || clientSecret.equals("") || clientSecret.isEmpty()) {
+            message = "Client Secret is Missing!";
+        }
+        if (platform == null || platform.equals("") || platform.isEmpty()) {
+            message = "Application is Missing!";
+        }
+        if (platform_app_id == null || platform_app_id.equals("") || platform_app_id.isEmpty()) {
+            message = "Application ID is Missing!";
+        }
+        if (UDID == null || UDID.equals("") || UDID.isEmpty()) {
+            message = "UUID is Missing!";
+        }
+
+        if (message != null) {
+            new AlertDialog.Builder(activity)
+                    .setTitle("Please Note!")
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    })
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show();
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -399,7 +469,7 @@ public class PushActivity extends AppCompatActivity  {
 //            editTextApplication.setText(sharedPreferences.getString("platform", null));
 //        }
         if (sharedPreferences.getString("UDID", null) != null) {
-            editTextUUID.setText(sharedPreferences.getString("UDID", null));
+           // editTextUUID.setText(sharedPreferences.getString("UDID", null));
         }
         if (sharedPreferences.getString("attributes", null) != null) {
             editTextAttributes.setText(sharedPreferences.getString("attributes", null));
@@ -469,6 +539,7 @@ public class PushActivity extends AppCompatActivity  {
                         }
                     }
 
+                    validateFields();
                     uPushService();
 
                 }
@@ -485,6 +556,7 @@ public class PushActivity extends AppCompatActivity  {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                validateFields();
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                 sharedPreferences.edit().putString("accessKey", accessKey).apply();
                 sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
@@ -512,13 +584,14 @@ public class PushActivity extends AppCompatActivity  {
                 clientSecret = editTextClientSecret.getText().toString();
                 platform_app_id = editTextApplicationID.getText().toString();
                 UDID = editTextUUID.getText().toString();
-                platform = editTextApplication.getText().toString();
+                platform = "android";
                 namespaceName = editTextNamespace.getText().toString();
                 try {
                     attributes = new JSONObject(editTextAttributes.getText().toString());
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                validateFields();
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                 sharedPreferences.edit().putString("accessKey", accessKey).apply();
                 sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
@@ -555,7 +628,8 @@ public class PushActivity extends AppCompatActivity  {
                 String token = sharedPreferences.getString("token", "");
                 if (sentToken) {
                     UDID = token;
-                    //editTextUUID.setText(String.valueOf(UDID));
+                    editTextUUID.setText(String.valueOf(UDID));
+                    Log.d("UDID", UDID);
                     Log.d("variant1", "variant1");
                 } else {
                     Log.d("variant2", "variant2");

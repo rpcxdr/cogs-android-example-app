@@ -1,9 +1,11 @@
 package io.cogswell.example;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.usage.UsageEvents;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -37,8 +39,6 @@ import io.cogswell.sdk.GambitRequest;
 import io.cogswell.sdk.GambitSDKService;
 import io.cogswell.sdk.message.GambitRequestMessage;
 import io.cogswell.sdk.message.GambitResponseMessage;
-import io.cogswell.sdk.notifications.QuickstartPreferences;
-import io.cogswell.sdk.notifications.RegistrationIntentService;
 import io.cogswell.sdk.push.GambitRequestPush;
 import io.cogswell.sdk.push.GambitResponsePush;
 import io.cogswell.sdk.request.GambitRequestEvent;
@@ -148,7 +148,7 @@ public class EventActivity extends AppCompatActivity  {
                 message = response.getMessage();
                 //Log.d("response", response.getMessage());
 
-            } catch (InterruptedException | ExecutionException ex) {
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
 
@@ -201,6 +201,37 @@ public class EventActivity extends AppCompatActivity  {
         }
     }
 
+
+    public void validateFields() {
+        String message = null;
+        if (accessKey == null || accessKey.equals("") || accessKey.isEmpty()) {
+            message = "Access Key is Missing!";
+        }
+        if (clientSalt == null || clientSalt.equals("") || clientSalt.isEmpty()) {
+            message = "Client Salt is Missing!";
+        }
+        if (clientSecret == null || clientSecret.equals("") || clientSecret.isEmpty()) {
+            message = "Client Secret is Missing!";
+        }
+        if (namespaceName == null || accessKey.equals("") || namespaceName.isEmpty()) {
+            message = "Namespace is Missing!";
+        }
+        if (eventName == null || eventName.equals("") || eventName.isEmpty()) {
+            message = "Event Name is Missing!";
+        }
+        if (message != null) {
+            new AlertDialog.Builder(activity)
+                    .setTitle("Please Note!")
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    })
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show();
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -306,6 +337,8 @@ public class EventActivity extends AppCompatActivity  {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                validateFields();
+
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                 sharedPreferences.edit().putString("accessKey", accessKey).apply();
                 sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
@@ -314,6 +347,8 @@ public class EventActivity extends AppCompatActivity  {
                 sharedPreferences.edit().putString("eventName", eventName).apply();
                 sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
                 sharedPreferences.edit().putInt("campaign_id", campaign_id).apply();
+
+
                 new event().execute("");
             }
         });
