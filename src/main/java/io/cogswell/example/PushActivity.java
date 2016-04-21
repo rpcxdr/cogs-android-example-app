@@ -100,53 +100,6 @@ public class PushActivity extends AppCompatActivity  {
     private BroadcastReceiver mRegistrationBroadcastReceiver;
     protected final ExecutorService executor = Executors.newCachedThreadPool();
 
-    private class message extends AsyncTask<String, Void, String> {
-
-        @Override
-        protected String doInBackground(String... params) {
-            LinkedHashMap<String, Object> ciidAttributes = new LinkedHashMap<>();
-
-            ciidAttributes.put("client_id", Integer.parseInt("1"));
-            GambitRequestMessage.Builder builder = new GambitRequestMessage.Builder(
-                    accessKey, clientSalt, clientSecret
-            ).setNamespace(namespaceName)
-                    .setAttributes(ciidAttributes)
-                    .setUDID(UDID);
-
-            Future<io.cogswell.sdk.GambitResponse> future = null;
-            try {
-                future = executor.submit(builder.build());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            //Log.d("future", String.valueOf(future));
-            GambitResponseMessage response;
-            try {
-                response = (GambitResponseMessage) future.get();
-
-                //Log.d("response", String.valueOf(response));
-
-            } catch (InterruptedException | ExecutionException ex) {
-                ex.printStackTrace();
-            }
-
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-
-            //Log.d("executed", "executed");
-        }
-
-        @Override
-        protected void onPreExecute() {}
-
-        @Override
-        protected void onProgressUpdate(Void... values) {}
-    }
     private class unRegisterPushService extends AsyncTask<String, Void, String> {
 
         @Override
@@ -391,7 +344,7 @@ public class PushActivity extends AppCompatActivity  {
             editTextNamespace.setText(parameters.namespaceName);
         }
     }
-    public void validateFields() {
+    public boolean validateFields() {
 
         String message = null;
         if (accessKey == null || accessKey.equals("") || accessKey.isEmpty()) {
@@ -424,7 +377,11 @@ public class PushActivity extends AppCompatActivity  {
                     })
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .show();
+
+            return false;
         }
+
+        return true;
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -459,9 +416,9 @@ public class PushActivity extends AppCompatActivity  {
         if (sharedPreferences.getString("clientSecret", null) != null) {
             editTextClientSecret.setText(sharedPreferences.getString("clientSecret", null));
         }
-//        if (sharedPreferences.getString("platform_app_id", null) != null) {
-//            editTextApplicationID.setText(String.valueOf(sharedPreferences.getString("platform_app_id", null)));
-//        }
+        if (sharedPreferences.getString("platform_app_id", null) != null) {
+           editTextApplicationID.setText(String.valueOf(sharedPreferences.getString("platform_app_id", null)));
+        }
         if (sharedPreferences.getString("namespaceName", null) != null) {
             editTextNamespace.setText(sharedPreferences.getString("namespaceName", null));
         }
@@ -538,8 +495,9 @@ public class PushActivity extends AppCompatActivity  {
                             e.printStackTrace();
                         }
                     }
-
-                    validateFields();
+                    if(validateFields() == false) {
+                        return;
+                    }
                     uPushService();
 
                 }
@@ -555,8 +513,9 @@ public class PushActivity extends AppCompatActivity  {
                     attributes = new JSONObject(editTextAttributes.getText().toString());
                 } catch (JSONException e) {
                     e.printStackTrace();
+                } if(validateFields() == false) {
+                    return;
                 }
-                validateFields();
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                 sharedPreferences.edit().putString("accessKey", accessKey).apply();
                 sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
@@ -590,8 +549,9 @@ public class PushActivity extends AppCompatActivity  {
                     attributes = new JSONObject(editTextAttributes.getText().toString());
                 } catch (JSONException e) {
                     e.printStackTrace();
+                } if(validateFields() == false) {
+                    return;
                 }
-                validateFields();
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                 sharedPreferences.edit().putString("accessKey", accessKey).apply();
                 sharedPreferences.edit().putString("clientSalt", clientSalt).apply();

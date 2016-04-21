@@ -94,7 +94,7 @@ public class EventActivity extends AppCompatActivity  {
     private ArrayList<GambitAttribute> namespaceAttributs = null;
     private String namespaceBody = null;
     private String eventBody = null;
-
+    private String receivedMessage = null;
     private boolean pushServiceStarted = false;
 
 
@@ -103,6 +103,73 @@ public class EventActivity extends AppCompatActivity  {
     protected final ExecutorService executor = Executors.newCachedThreadPool();
 
 
+    private class message extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... params) {
+            GambitRequestMessage.Builder builder = new GambitRequestMessage.Builder(
+                    accessKey, clientSalt, clientSecret
+            ).setUDID(receivedMessage)
+                    .setAttributes(attributes)
+                    .setNamespace(namespaceName);
+            Log.d("accessKey", accessKey);
+            Log.d("clientSalt", clientSalt);
+            Log.d("clientSecret", clientSecret);
+            Log.d("attributes", attributes.toString());
+            Log.d("clientSecret2", clientSecret);
+            Future<io.cogswell.sdk.GambitResponse> future = null;
+            try {
+                future = executor.submit(builder.build());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Log.d("future", String.valueOf(future));
+            GambitResponseMessage response;
+            try {
+                response = (GambitResponseMessage) future.get();
+                Log.d("response message", String.valueOf(response.getRawBody()));
+                final String responseMessage = response.getRawBody();
+                activity.runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (!responseMessage.equals("") && responseMessage != null && !responseMessage.isEmpty()) {
+                            new AlertDialog.Builder(activity)
+                                    .setTitle("Message Response")
+                                    .setMessage(responseMessage)
+                                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+
+                                        }
+                                    })
+                                    .setIcon(android.R.drawable.ic_dialog_alert)
+                                    .show();
+                        }
+                    }
+                });
+
+                Log.d("response message", String.valueOf(response.getRawBody()));
+
+            } catch (Exception ex) {
+                Log.d("extest", ex.getLocalizedMessage());
+                ex.printStackTrace();
+            }
+
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+
+            //Log.d("executed", "executed");
+        }
+
+        @Override
+        protected void onPreExecute() {}
+
+        @Override
+        protected void onProgressUpdate(Void... values) {}
+    }
 
     private class event extends AsyncTask<String, Void, String> {
 
@@ -202,7 +269,7 @@ public class EventActivity extends AppCompatActivity  {
     }
 
 
-    public void validateFields() {
+    public boolean validateFields() {
         String message = null;
         if (accessKey == null || accessKey.equals("") || accessKey.isEmpty()) {
             message = "Access Key is Missing!";
@@ -230,7 +297,10 @@ public class EventActivity extends AppCompatActivity  {
                     })
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .show();
+            return false;
         }
+
+        return true;
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -278,6 +348,37 @@ public class EventActivity extends AppCompatActivity  {
             buttonDebugDirective.setChecked(true);
             debug_directive = "echo-as-message";
         }
+        Intent intent = getIntent();
+        String message_received = intent.getStringExtra("message_received");
+        String message_received_id = intent.getStringExtra("message_received_id");
+
+        if (message_received != null) {
+
+            accessKey = editTextAccessKey.getText().toString();
+            clientSalt = editTextClientSalt.getText().toString();
+            clientSecret = editTextClientSecret.getText().toString();
+            try {
+                attributes = new JSONObject(editTextAttributes.getText().toString());
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            namespaceName = editTextNamespace.getText().toString();
+
+            new AlertDialog.Builder(activity)
+                    .setTitle("Push Payload")
+                    .setMessage(message_received)
+                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    })
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show();
+
+            receivedMessage = message_received_id;
+            Log.d("receivedMessage", receivedMessage);
+            new message().execute("");
+        }
 
         loadParameters();
        /* editTextAccessKey.setText(accessKey);
@@ -320,7 +421,12 @@ public class EventActivity extends AppCompatActivity  {
                 accessKey = editTextAccessKey.getText().toString();
                 clientSalt = editTextClientSalt.getText().toString();
                 clientSecret = editTextClientSecret.getText().toString();
-
+                try {
+                    attributes = new JSONObject(editTextAttributes.getText().toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                namespaceName = editTextNamespace.getText().toString();
                 //Log.d("accessKey", accessKey);
 
                 //Log.d("clientSalt", clientSalt);
@@ -337,7 +443,10 @@ public class EventActivity extends AppCompatActivity  {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-                validateFields();
+
+                if(validateFields() == false) {
+                    return;
+                }
 
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                 sharedPreferences.edit().putString("accessKey", accessKey).apply();
