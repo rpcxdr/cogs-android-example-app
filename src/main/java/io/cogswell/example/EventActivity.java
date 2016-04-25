@@ -2,45 +2,27 @@ package io.cogswell.example;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.usage.UsageEvents;
 import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.provider.ContactsContract;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
-import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
-
-import io.cogswell.sdk.GambitRequest;
 import io.cogswell.sdk.GambitSDKService;
 import io.cogswell.sdk.message.GambitRequestMessage;
 import io.cogswell.sdk.message.GambitResponseMessage;
-import io.cogswell.sdk.push.GambitRequestPush;
-import io.cogswell.sdk.push.GambitResponsePush;
 import io.cogswell.sdk.request.GambitRequestEvent;
 import io.cogswell.sdk.response.GambitResponseEvent;
 
@@ -51,11 +33,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.TimeZone;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -69,7 +47,7 @@ public class EventActivity extends AppCompatActivity  {
     private String secretKey;
     private String namespaceName;
     private String eventName;
-    private JSONObject attributes;
+    private String attributesJSONAsString;
     private String platform;
     private String enviornment;
     private String platform_app_id;
@@ -107,53 +85,78 @@ public class EventActivity extends AppCompatActivity  {
 
         @Override
         protected String doInBackground(String... params) {
-            GambitRequestMessage.Builder builder = new GambitRequestMessage.Builder(
-                    accessKey, clientSalt, clientSecret
-            ).setUDID(receivedMessage)
-                    .setAttributes(attributes)
-                    .setNamespace(namespaceName);
-            Log.d("accessKey", accessKey);
-            Log.d("clientSalt", clientSalt);
-            Log.d("clientSecret", clientSecret);
-            Log.d("attributes", attributes.toString());
-            Log.d("clientSecret2", clientSecret);
-            Future<io.cogswell.sdk.GambitResponse> future = null;
             try {
-                future = executor.submit(builder.build());
+                // This will throw an exception if the json is invalid.
+                JSONObject attributes = new JSONObject(attributesJSONAsString);
+
+                GambitRequestMessage.Builder builder = new GambitRequestMessage.Builder(
+                        accessKey, clientSalt, clientSecret
+                ).setUDID(receivedMessage)
+                        .setAttributes(attributes)
+                        .setNamespace(namespaceName);
+                Log.d("accessKey", accessKey);
+                Log.d("clientSalt", clientSalt);
+                Log.d("clientSecret", clientSecret);
+                Log.d("attributesJSONAsString", attributesJSONAsString.toString());
+                Log.d("clientSecret2", clientSecret);
+                Future<io.cogswell.sdk.GambitResponse> future = null;
+                try {
+                    future = executor.submit(builder.build());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                Log.d("future", String.valueOf(future));
+                GambitResponseMessage response;
+                try {
+                    response = (GambitResponseMessage) future.get();
+                    Log.d("response message", String.valueOf(response.getRawBody()));
+                    final String responseMessage = response.getRawBody();
+                    activity.runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (!responseMessage.equals("") && responseMessage != null && !responseMessage.isEmpty()) {
+                                new AlertDialog.Builder(activity)
+                                        .setTitle("Message Response")
+                                        .setMessage(responseMessage)
+                                        .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                            }
+                                        })
+                                        .setIcon(android.R.drawable.ic_dialog_alert)
+                                        .show();
+                            }
+                        }
+                    });
+
+                    Log.d("response message", String.valueOf(response.getRawBody()));
+
+                } catch (Exception ex) {
+                    Log.d("extest", ex.getLocalizedMessage());
+                    ex.printStackTrace();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-            }
-
-            Log.d("future", String.valueOf(future));
-            GambitResponseMessage response;
-            try {
-                response = (GambitResponseMessage) future.get();
-                Log.d("response message", String.valueOf(response.getRawBody()));
-                final String responseMessage = response.getRawBody();
+                final String messageFinal;
+                if (e instanceof JSONException) {
+                    messageFinal = "The JSON syntax for Attributes as JSON is invalid.";
+                } else {
+                    messageFinal = "Please confirm your keys, ids, and namespace are correct.";
+                }
                 activity.runOnUiThread(new Runnable() {
                     public void run() {
-                        if (!responseMessage.equals("") && responseMessage != null && !responseMessage.isEmpty()) {
-                            new AlertDialog.Builder(activity)
-                                    .setTitle("Message Response")
-                                    .setMessage(responseMessage)
-                                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-
-                                        }
-                                    })
-                                    .setIcon(android.R.drawable.ic_dialog_alert)
-                                    .show();
-                        }
+                        new AlertDialog.Builder(activity)
+                                .setTitle("Invalid un-subscription data:")
+                                .setMessage(messageFinal)
+                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
                     }
                 });
-
-                Log.d("response message", String.valueOf(response.getRawBody()));
-
-            } catch (Exception ex) {
-                Log.d("extest", ex.getLocalizedMessage());
-                ex.printStackTrace();
             }
-
 
             return null;
         }
@@ -176,49 +179,75 @@ public class EventActivity extends AppCompatActivity  {
         @Override
         protected String doInBackground(String... params) {
 
-            GambitRequestEvent.Builder builder = new GambitRequestEvent.Builder(accessKey, clientSalt, clientSecret);
-            builder.setEventName(eventName);
-            builder.setNamespace(namespaceName);
-            builder.setAttributes(attributes);
-            builder.setCampaignId(campaign_id);
-            builder.setForwardAsMessage(true);
-
-            String timestamp = null;
-
-            TimeZone tz = TimeZone.getTimeZone("UTC");
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ");
-            df.setTimeZone(tz);
-            timestamp = df.format(new Date());
-
-
-            builder.setTimestamp(timestamp);
-
-            builder.setForwardAsMessage(true);
-
-            builder.setDebugDirective(debug_directive);
-
-
-            Future<io.cogswell.sdk.GambitResponse> future = null;
             try {
-                future = GambitSDKService.getInstance().sendGambitEvent(builder);
+                // This will throw an exception if the json is invalid.
+                JSONObject attributes = new JSONObject(attributesJSONAsString);
+
+                GambitRequestEvent.Builder builder = new GambitRequestEvent.Builder(accessKey, clientSalt, clientSecret);
+                builder.setEventName(eventName);
+                builder.setNamespace(namespaceName);
+                builder.setAttributes(attributes);
+                builder.setCampaignId(campaign_id);
+                builder.setForwardAsMessage(true);
+
+                String timestamp = null;
+
+                TimeZone tz = TimeZone.getTimeZone("UTC");
+                DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ");
+                df.setTimeZone(tz);
+                timestamp = df.format(new Date());
+
+
+                builder.setTimestamp(timestamp);
+
+                builder.setForwardAsMessage(true);
+
+                builder.setDebugDirective(debug_directive);
+
+
+                Future<io.cogswell.sdk.GambitResponse> future = null;
+                try {
+                    future = GambitSDKService.getInstance().sendGambitEvent(builder);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                GambitResponseEvent response;
+                try {
+                    response = (GambitResponseEvent) future.get();
+
+                    eventBody = response.getRawBody();
+
+                    //Log.d("eventBody", eventBody);
+                    message = response.getMessage();
+                    //Log.d("response", response.getMessage());
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
+                final String messageFinal;
+                if (e instanceof JSONException) {
+                    messageFinal = "The JSON syntax for Attributes as JSON is invalid.";
+                } else {
+                    messageFinal = "Please confirm your keys, ids, and namespace are correct.";
+                }
+                activity.runOnUiThread(new Runnable() {
+                    public void run() {
+                        new AlertDialog.Builder(activity)
+                                .setTitle("Invalid un-subscription data:")
+                                .setMessage(messageFinal)
+                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
+                    }
+                });
+
             }
-
-            GambitResponseEvent response;
-            try {
-                response = (GambitResponseEvent) future.get();
-
-                eventBody = response.getRawBody();
-
-                //Log.d("eventBody", eventBody);
-                message = response.getMessage();
-                //Log.d("response", response.getMessage());
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-
 
             return null;
         }
@@ -270,6 +299,17 @@ public class EventActivity extends AppCompatActivity  {
 
 
     public boolean validateFields() {
+
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+        if (isInteger(editTextCampaignID.getText().toString())) {
+            campaign_id = Integer.parseInt(editTextCampaignID.getText().toString());
+        }
+        namespaceName = editTextNamespace.getText().toString();
+        eventName = editTextEventName.getText().toString();
+
         String message = null;
         if (accessKey == null || accessKey.equals("") || accessKey.isEmpty()) {
             message = "Access Key is Missing!";
@@ -286,22 +326,76 @@ public class EventActivity extends AppCompatActivity  {
         if (eventName == null || eventName.equals("") || eventName.isEmpty()) {
             message = "Event Name is Missing!";
         }
-        if (message != null) {
-            new AlertDialog.Builder(activity)
-                    .setTitle("Please Note!")
-                    .setMessage(message)
-                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
 
-                        }
-                    })
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .show();
+        try {
+            // Change the field to use the converted JSON so the user clearly sees what the server is seeing.
+            attributesJSONAsString = editTextAttributes.getText().toString();
+            attributesJSONAsString = new JSONObject(attributesJSONAsString).toString();
+            editTextAttributes.setText(attributesJSONAsString);
+        } catch (Exception e) {
+            e.printStackTrace();
+            message = "Attributes as JSON is not valid JSON!";
+        }
+
+        if (message != null) {
+            final String messageFinal = message;
+            activity.runOnUiThread(new Runnable() {
+                public void run() {
+                    new AlertDialog.Builder(activity)
+                            .setTitle("Please Note!")
+                            .setMessage(messageFinal)
+                            .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    // We need to implement this method for the cancel button to appear.
+                                }
+                            })
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .show();
+                }
+            });
             return false;
         }
 
         return true;
     }
+    public void saveFields() {
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        attributesJSONAsString = editTextAttributes.getText().toString();
+        eventName = editTextEventName.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+        if (isInteger(editTextCampaignID.getText().toString())) {
+            campaign_id = Integer.parseInt(editTextCampaignID.getText().toString());
+        }
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        sharedPreferences.edit().putString("accessKey", accessKey).apply();
+        sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
+        sharedPreferences.edit().putString("clientSecret", clientSecret).apply();
+        sharedPreferences.edit().putString("attributes", attributesJSONAsString).apply();
+        sharedPreferences.edit().putString("eventName", eventName).apply();
+        sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
+        sharedPreferences.edit().putInt("campaign_id", campaign_id).apply();
+    }
+    public void fillData() {
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        attributesJSONAsString = editTextAttributes.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+        if (isInteger(editTextCampaignID.getText().toString())) {
+            campaign_id = Integer.parseInt(editTextCampaignID.getText().toString());
+        }
+        namespaceName = editTextNamespace.getText().toString();
+        eventName = editTextEventName.getText().toString();
+
+        if(validateFields() == false) {
+            return;
+        }
+        saveFields();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -357,19 +451,15 @@ public class EventActivity extends AppCompatActivity  {
             accessKey = editTextAccessKey.getText().toString();
             clientSalt = editTextClientSalt.getText().toString();
             clientSecret = editTextClientSecret.getText().toString();
-            try {
-                attributes = new JSONObject(editTextAttributes.getText().toString());
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+            attributesJSONAsString = editTextAttributes.getText().toString();
             namespaceName = editTextNamespace.getText().toString();
 
             new AlertDialog.Builder(activity)
                     .setTitle("Push Payload")
                     .setMessage(message_received)
-                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                    .setPositiveButton("View Message", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
-
+                            new message().execute("");
                         }
                     })
                     .setIcon(android.R.drawable.ic_dialog_alert)
@@ -377,7 +467,7 @@ public class EventActivity extends AppCompatActivity  {
 
             receivedMessage = message_received_id;
             Log.d("receivedMessage", receivedMessage);
-            new message().execute("");
+
         }
 
         loadParameters();
@@ -409,6 +499,7 @@ public class EventActivity extends AppCompatActivity  {
         toolbar_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                fillData();
 
                 Intent mainIntent = new Intent(EventActivity.this, StartActivity.class);
                 EventActivity.this.startActivity(mainIntent);
@@ -418,45 +509,12 @@ public class EventActivity extends AppCompatActivity  {
         toolbar_execute.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                accessKey = editTextAccessKey.getText().toString();
-                clientSalt = editTextClientSalt.getText().toString();
-                clientSecret = editTextClientSecret.getText().toString();
-                try {
-                    attributes = new JSONObject(editTextAttributes.getText().toString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                namespaceName = editTextNamespace.getText().toString();
-                //Log.d("accessKey", accessKey);
-
-                //Log.d("clientSalt", clientSalt);
-
-                //Log.d("clientSecret", clientSecret);
-
-                if (isInteger(editTextCampaignID.getText().toString())) {
-                    campaign_id = Integer.parseInt(editTextCampaignID.getText().toString());
-                }
-                namespaceName = editTextNamespace.getText().toString();
-                eventName = editTextEventName.getText().toString();
-                try {
-                    attributes = new JSONObject(editTextAttributes.getText().toString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
 
                 if(validateFields() == false) {
                     return;
                 }
 
-                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
-                sharedPreferences.edit().putString("accessKey", accessKey).apply();
-                sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
-                sharedPreferences.edit().putString("clientSecret", clientSecret).apply();
-                sharedPreferences.edit().putString("attributes", attributes.toString()).apply();
-                sharedPreferences.edit().putString("eventName", eventName).apply();
-                sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
-                sharedPreferences.edit().putInt("campaign_id", campaign_id).apply();
-
+                saveFields();
 
                 new event().execute("");
             }
@@ -476,4 +534,9 @@ public class EventActivity extends AppCompatActivity  {
         return true;
     }
 
+    @Override
+    protected void onPause() {
+        fillData();
+        super.onPause();
+    }
 }

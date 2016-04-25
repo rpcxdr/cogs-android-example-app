@@ -30,7 +30,7 @@ public class GcmService extends GcmListenerService {
      */
     @Override
     public void onMessageReceived(String from, Bundle data) {
-
+Log.d("test123----1", "1111111111");
         String message_received_id = data.getString("aviata_gambit_message_id");
 
         sendNotification(data.toString(), message_received_id);
@@ -42,6 +42,7 @@ public class GcmService extends GcmListenerService {
     @Override
     public void onDeletedMessages() {
         sendNotification("Deleted messages on server", "");
+        Log.d("test123----2", "222222222");
     }
 
     /**
@@ -49,6 +50,7 @@ public class GcmService extends GcmListenerService {
      */
     @Override
     public void onMessageSent(String msgId) {
+        Log.d("test123----3", "3333333");
         sendNotification("Upstream message sent. Id=" + msgId, "");
     }
 
@@ -57,6 +59,7 @@ public class GcmService extends GcmListenerService {
      */
     @Override
     public void onSendError(String msgId, String error) {
+        Log.d("test123----4", "44444444");
         sendNotification("Upstream message send error. Id=" + msgId + ", error" + error, "");
     }
 
@@ -64,6 +67,7 @@ public class GcmService extends GcmListenerService {
     // This is just one simple example of what you might choose to do with
     // a GCM message.
     private void sendNotification(String msg, String messageId) {
+        Log.d("test123----5", "555555555");
         Intent intent = new Intent(this, EventActivity.class);
         intent.putExtra("message_received", msg);
         intent.putExtra("message_received_id", messageId);

@@ -54,7 +54,7 @@ public class SplashActivity extends Activity {
                     parameters.platform = map.get(key);
                 } else if (key.equals("enviornment")) {
                     parameters.enviornment = map.get(key);
-                } else if (key.equals("platform_app_id")) {
+                } else if (key.equals("application_id")) {
                     parameters.platform_app_id = map.get(key);
                 } else if (key.equals("campaign_id")) {
                     parameters.campaign_id = Integer.parseInt(map.get(key));

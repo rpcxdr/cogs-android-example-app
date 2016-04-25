@@ -12,15 +12,11 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
@@ -30,26 +26,13 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 
 import io.cogswell.example.notifications.QuickstartPreferences;
 import io.cogswell.example.notifications.RegistrationIntentService;
-import io.cogswell.sdk.GambitRequest;
-import io.cogswell.sdk.GambitSDKService;
-import io.cogswell.sdk.message.GambitRequestMessage;
-import io.cogswell.sdk.message.GambitResponseMessage;
 import io.cogswell.sdk.push.GambitRequestPush;
 import io.cogswell.sdk.push.GambitResponsePush;
-import io.cogswell.sdk.request.GambitRequestEvent;
-import io.cogswell.sdk.response.GambitResponseEvent;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -66,7 +49,7 @@ public class PushActivity extends AppCompatActivity  {
     private String eventName;
     private String platform;
     private String enviornment = "dev";
-    private JSONObject attributes;
+    private String attributesJSONAsString;
     private String platform_app_id;
     private boolean wasPushed = false;
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
@@ -105,52 +88,73 @@ public class PushActivity extends AppCompatActivity  {
         @Override
         protected String doInBackground(String... params) {
 
-            GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
-                    accessKey, clientSalt, clientSecret
-            ).setNamespace(namespaceName)
-                    .setAttributes(attributes)
-                    .setUDID(UDID)
-                    .setEnviornment(enviornment)
-                    .setPlatform(platform)
-                    .setPlatformAppID(platform_app_id)
-                    .setMethodName(GambitRequestPush.unregister);
-
             Future<io.cogswell.sdk.GambitResponse> future = null;
             try {
+                // This will throw an exception if the json is invalid.
+                JSONObject attributes = new JSONObject(attributesJSONAsString);
+
+                GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
+                        accessKey, clientSalt, clientSecret
+                ).setNamespace(namespaceName)
+                        .setAttributes(attributes)
+                        .setUDID(UDID)
+                        .setEnviornment(enviornment)
+                        .setPlatform(platform)
+                        .setPlatformAppID(platform_app_id)
+                        .setMethodName(GambitRequestPush.unregister);
+
                 future = executor.submit(builder.build());
+
+                //Log.d("future", String.valueOf(future));
+                GambitResponsePush response;
+                try {
+                    response = (GambitResponsePush) future.get();
+
+                    Log.d("response 2", String.valueOf(response.getMessage()));
+                    final String message = response.getRawBody();
+                    Log.d("response", String.valueOf(response.getRawBody()));
+                    activity.runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (!message.equals("") && message != null && !message.isEmpty()) {
+                                new AlertDialog.Builder(activity)
+                                        .setTitle("Please Note!")
+                                        .setMessage(message)
+                                        .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                            }
+                                        })
+                                        .setIcon(android.R.drawable.ic_dialog_alert)
+                                        .show();
+                            }
+                        }
+                    });
+
+                } catch (InterruptedException | ExecutionException ex) {
+                    ex.printStackTrace();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-            }
-
-            //Log.d("future", String.valueOf(future));
-            GambitResponsePush response;
-            try {
-                response = (GambitResponsePush) future.get();
-
-                Log.d("response 2", String.valueOf(response.getMessage()));
-                final String message = response.getRawBody();
-                Log.d("response", String.valueOf(response.getRawBody()));
+                final String messageFinal;
+                if (e instanceof JSONException) {
+                    messageFinal = "The JSON syntax for Attributes as JSON is invalid.";
+                } else {
+                    messageFinal = "Please confirm your keys, ids, and namespace are correct.";
+                }
                 activity.runOnUiThread(new Runnable() {
                     public void run() {
-                        if (!message.equals("") && message != null && !message.isEmpty()) {
-                            new AlertDialog.Builder(activity)
-                                    .setTitle("Please Note!")
-                                    .setMessage(message)
-                                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-
-                                        }
-                                    })
-                                    .setIcon(android.R.drawable.ic_dialog_alert)
-                                    .show();
-                        }
+                        new AlertDialog.Builder(activity)
+                                .setTitle("Invalid un-subscription data:")
+                                .setMessage(messageFinal)
+                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
                     }
                 });
-
-            } catch (InterruptedException | ExecutionException ex) {
-                ex.printStackTrace();
             }
-
 
             return null;
         }
@@ -173,50 +177,71 @@ public class PushActivity extends AppCompatActivity  {
         @Override
         protected String doInBackground(String... params) {
 
-            GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
-                    accessKey, clientSalt, clientSecret
-            ).setNamespace(namespaceName)
-                    .setAttributes(attributes)
-                    .setUDID(UDID)
-                    .setEnviornment(enviornment)
-                    .setPlatform(platform)
-                    .setPlatformAppID(platform_app_id)
-                    .setMethodName(GambitRequestPush.register);
-
             Future<io.cogswell.sdk.GambitResponse> future = null;
             try {
+                // This will throw an exception if the json is invalid.
+                JSONObject attributes = new JSONObject(attributesJSONAsString);
+
+                GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
+                        accessKey, clientSalt, clientSecret
+                ).setNamespace(namespaceName)
+                        .setAttributes(attributes)
+                        .setUDID(UDID)
+                        .setEnviornment(enviornment)
+                        .setPlatform(platform)
+                        .setPlatformAppID(platform_app_id)
+                        .setMethodName(GambitRequestPush.register);
+
                 future = executor.submit(builder.build());
+
+                //Log.d("future", String.valueOf(future));
+                GambitResponsePush response;
+                try {
+                    response = (GambitResponsePush) future.get();
+                    final String message = response.getRawBody();
+                    Log.d("response", String.valueOf(response.getMessage()));
+                    activity.runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (!message.equals("") && message != null && !message.isEmpty()) {
+                                new AlertDialog.Builder(activity)
+                                        .setTitle("Please Note!")
+                                        .setMessage(message)
+                                        .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                            }
+                                        })
+                                        .setIcon(android.R.drawable.ic_dialog_alert)
+                                        .show();
+                            }
+                        }
+                    });
+
+                } catch (InterruptedException | ExecutionException ex) {
+                    ex.printStackTrace();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-            }
-
-            //Log.d("future", String.valueOf(future));
-            GambitResponsePush response;
-            try {
-                response = (GambitResponsePush) future.get();
-                final String message = response.getRawBody();
-                Log.d("response", String.valueOf(response.getMessage()));
+                final String messageFinal;
+                if (e instanceof JSONException) {
+                    messageFinal = "The JSON syntax for Attributes as JSON is invalid.";
+                } else {
+                    messageFinal = "Please confirm your keys, ids, and namespace are correct.";
+                }
                 activity.runOnUiThread(new Runnable() {
                     public void run() {
-                        if (!message.equals("") && message != null && !message.isEmpty()) {
-                            new AlertDialog.Builder(activity)
-                                    .setTitle("Please Note!")
-                                    .setMessage(message)
-                                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-
-                                        }
-                                    })
-                                    .setIcon(android.R.drawable.ic_dialog_alert)
-                                    .show();
-                        }
+                        new AlertDialog.Builder(activity)
+                                .setTitle("Invalid un-subscription data:")
+                                .setMessage(messageFinal)
+                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
                     }
                 });
-
-            } catch (InterruptedException | ExecutionException ex) {
-                ex.printStackTrace();
             }
-
 
             return null;
         }
@@ -343,18 +368,29 @@ public class PushActivity extends AppCompatActivity  {
         if(!parameters.namespaceName.isEmpty()) {
             editTextNamespace.setText(parameters.namespaceName);
         }
+        // We've loaded from the parameters once - after this, rely on the saved properties.
+        CommonProperties.setParameters(null);
+        saveFields();
     }
     public boolean validateFields() {
 
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        platform = "android";//editTextApplication.getText().toString();
+        platform_app_id = editTextApplicationID.getText().toString();
+        UDID = editTextUUID.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+
         String message = null;
-        if (accessKey == null || accessKey.equals("") || accessKey.isEmpty()) {
-            message = "Access Key is Missing!";
+        if (accessKey == null || accessKey.equals("") || accessKey.isEmpty() || accessKey.length() < 10) {
+            message = "Access Key is Missing or It's not Correct!";
         }
-        if (clientSalt == null || clientSalt.equals("") || clientSalt.isEmpty()) {
-            message = "Client Salt is Missing!";
+        if (clientSalt == null || clientSalt.equals("") || clientSalt.isEmpty() || clientSalt.length() < 10) {
+            message = "Client Salt is Missing or It's not Correct!";
         }
-        if (clientSecret == null || clientSecret.equals("") || clientSecret.isEmpty()) {
-            message = "Client Secret is Missing!";
+        if (clientSecret == null || clientSecret.equals("") || clientSecret.isEmpty() || clientSecret.length() < 10) {
+            message = "Client Secret is Missing or It's not Correct!";
         }
         if (platform == null || platform.equals("") || platform.isEmpty()) {
             message = "Application is Missing!";
@@ -365,24 +401,75 @@ public class PushActivity extends AppCompatActivity  {
         if (UDID == null || UDID.equals("") || UDID.isEmpty()) {
             message = "UUID is Missing!";
         }
+        try {
+            // Change the field to use the converted JSON so the user clearly sees what the server is seeing.
+            attributesJSONAsString = editTextAttributes.getText().toString();
+            attributesJSONAsString = new JSONObject(attributesJSONAsString).toString();
+            editTextAttributes.setText(attributesJSONAsString);
+        } catch (Exception e) {
+            e.printStackTrace();
+            message = "Attributes as JSON is not valid JSON!";
+        }
 
         if (message != null) {
-            new AlertDialog.Builder(activity)
-                    .setTitle("Please Note!")
-                    .setMessage(message)
-                    .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-
-                        }
-                    })
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .show();
-
+            final String messageFinal = message;
+            activity.runOnUiThread(new Runnable() {
+                public void run() {
+                    new AlertDialog.Builder(activity)
+                            .setTitle("Please Note!")
+                            .setMessage(messageFinal)
+                            .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    // We need to implement this method for the cancel button to appear.
+                                }
+                            })
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .show();
+                }
+            });
             return false;
         }
 
         return true;
     }
+
+    public void saveFields() {
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        platform = "android";//editTextApplication.getText().toString();
+        platform_app_id = editTextApplicationID.getText().toString();
+        UDID = editTextUUID.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+        attributesJSONAsString = editTextAttributes.getText().toString();
+
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        sharedPreferences.edit().putString("accessKey", accessKey).apply();
+        sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
+        sharedPreferences.edit().putString("clientSecret", clientSecret).apply();
+        sharedPreferences.edit().putString("platform", platform).apply();
+        sharedPreferences.edit().putString("platform_app_id", platform_app_id).apply();
+        sharedPreferences.edit().putString("UDID", UDID).apply();
+        sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
+        sharedPreferences.edit().putString("attributes", attributesJSONAsString).apply();
+    }
+    public void fillData() {
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        platform_app_id = editTextApplicationID.getText().toString();
+        UDID = editTextUUID.getText().toString();
+        platform = "android";//editTextApplication.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+        attributesJSONAsString = editTextAttributes.getText().toString();
+
+        if(validateFields() == false) {
+            return;
+        }
+        saveFields();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -422,12 +509,14 @@ public class PushActivity extends AppCompatActivity  {
         if (sharedPreferences.getString("namespaceName", null) != null) {
             editTextNamespace.setText(sharedPreferences.getString("namespaceName", null));
         }
-//        if (sharedPreferences.getString("platform", null) != null) {
-//            editTextApplication.setText(sharedPreferences.getString("platform", null));
-//        }
-        if (sharedPreferences.getString("UDID", null) != null) {
-           // editTextUUID.setText(sharedPreferences.getString("UDID", null));
-        }
+        // The platform is always android.
+        // if (sharedPreferences.getString("platform", null) != null) {
+        //     editTextApplication.setText(sharedPreferences.getString("platform", null));
+        // }
+        // The UDID is automatically populated.
+        //if (sharedPreferences.getString("UDID", null) != null) {
+        //    editTextUUID.setText(sharedPreferences.getString("UDID", null));
+        //}
         if (sharedPreferences.getString("attributes", null) != null) {
             editTextAttributes.setText(sharedPreferences.getString("attributes", null));
         }
@@ -448,14 +537,12 @@ public class PushActivity extends AppCompatActivity  {
                 //platform = editTextApplication.getText().toString();
                 //UDID = editTextUUID.getText().toString();
                 //platform_app_id = editTextApplicationID.getText().toString();
-
-
-
             }
         });
         toolbar_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                fillData();
 
                 Intent mainIntent = new Intent(PushActivity.this,StartActivity.class);
                 PushActivity.this.startActivity(mainIntent);
@@ -489,11 +576,7 @@ public class PushActivity extends AppCompatActivity  {
                         namespaceName = sharedPreferences.getString("namespaceName", null);
                     }
                     if (sharedPreferences.getString("attributes", null) != null) {
-                        try {
-                            attributes = new JSONObject(sharedPreferences.getString("attributes", null));
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
+                        attributesJSONAsString = sharedPreferences.getString("attributes", null);
                     }
                     if(validateFields() == false) {
                         return;
@@ -501,30 +584,11 @@ public class PushActivity extends AppCompatActivity  {
                     uPushService();
 
                 }
-                accessKey = editTextAccessKey.getText().toString();
-                clientSalt = editTextClientSalt.getText().toString();
-                clientSecret = editTextClientSecret.getText().toString();
-                platform_app_id = editTextApplicationID.getText().toString();
-                UDID = editTextUUID.getText().toString();
-                platform = "android";//editTextApplication.getText().toString();
-                namespaceName = editTextNamespace.getText().toString();
 
-                try {
-                    attributes = new JSONObject(editTextAttributes.getText().toString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                } if(validateFields() == false) {
+                if(validateFields() == false) {
                     return;
                 }
-                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
-                sharedPreferences.edit().putString("accessKey", accessKey).apply();
-                sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
-                sharedPreferences.edit().putString("clientSecret", clientSecret).apply();
-                sharedPreferences.edit().putString("attributes", attributes.toString()).apply();
-                sharedPreferences.edit().putString("platform", platform).apply();
-                sharedPreferences.edit().putString("UDID", UDID).apply();
-                sharedPreferences.edit().putString("platform_app_id", platform_app_id).apply();
-                sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
+                saveFields();
 
                 Handler handlerTimer = new Handler();
                 handlerTimer.postDelayed(new Runnable() {
@@ -538,29 +602,12 @@ public class PushActivity extends AppCompatActivity  {
         buttonUnregisterPush.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                accessKey = editTextAccessKey.getText().toString();
-                clientSalt = editTextClientSalt.getText().toString();
-                clientSecret = editTextClientSecret.getText().toString();
-                platform_app_id = editTextApplicationID.getText().toString();
-                UDID = editTextUUID.getText().toString();
-                platform = "android";
-                namespaceName = editTextNamespace.getText().toString();
-                try {
-                    attributes = new JSONObject(editTextAttributes.getText().toString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                } if(validateFields() == false) {
+
+                if(validateFields() == false) {
                     return;
                 }
-                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
-                sharedPreferences.edit().putString("accessKey", accessKey).apply();
-                sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
-                sharedPreferences.edit().putString("clientSecret", clientSecret).apply();
-                sharedPreferences.edit().putString("attributes", attributes.toString()).apply();
-                sharedPreferences.edit().putString("platform", platform).apply();
-                sharedPreferences.edit().putString("UDID", UDID).apply();
-                sharedPreferences.edit().putString("platform_app_id", platform_app_id).apply();
-                sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
+
+                saveFields();
 
                 Handler handlerTimer = new Handler();
                 handlerTimer.postDelayed(new Runnable() {
@@ -606,6 +653,7 @@ public class PushActivity extends AppCompatActivity  {
 
     @Override
     protected void onPause() {
+        fillData();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mRegistrationBroadcastReceiver);
         super.onPause();
     }

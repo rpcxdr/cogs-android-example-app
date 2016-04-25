@@ -1,6 +1,8 @@
 package io.cogswell.example.notifications;
 
 import android.content.Intent;
+import android.util.Log;
+
 import com.google.android.gms.iid.InstanceIDListenerService;
 
 public class InstanceIDService extends InstanceIDListenerService {
@@ -11,6 +13,7 @@ public class InstanceIDService extends InstanceIDListenerService {
      */
     // [START refresh_token]
     public void onTokenRefresh() {
+        Log.d("test123----6", "66666666");
         //Log.d("checktoken","onTokenRefresh");
         // Fetch updated Instance ID token and notify our app's server of any changes (if applicable).
         Intent intent = new Intent(this, RegistrationIntentService.class);

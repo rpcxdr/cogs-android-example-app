@@ -10,11 +10,11 @@ buildscript {
 
 apply plugin: 'com.android.application'
 
-  android {
-      lintOptions {
-         abortOnError false
-       }
-   }
+android {
+  lintOptions {
+    abortOnError false
+  }
+}
 
 android {
   compileSdkVersion 22
@@ -31,7 +31,7 @@ android {
 
   buildTypes {
     debug {
-      debuggable false
+      debuggable true
     }
   }
 
@@ -39,26 +39,26 @@ android {
     applicationId "io.cogswell.example"
     minSdkVersion 15
     targetSdkVersion 22
-    versionCode 10
-    versionName "10.0"
+    versionCode 11
+    versionName "11.0"
     multiDexEnabled true
   }
 }
 
 repositories {
   jcenter()
-  mavenLocal()
+//  mavenLocal()
 }
 
 dependencies {
   compile 'com.android.support:multidex:1.0.1'
   compile 'com.android.support:appcompat-v7:22.0.0'
   compile 'com.android.support:design:22.2.1'
-  compile 'io.cogswell:cogs-android-client-sdk:1.0.10'
+  compile 'io.cogswell:cogs-android-client-sdk:1.0.11'
 }
 
 group = 'io.cogswell'
-version = '1.0.9'
+version = '1.0.11'
 
 task wrapper(type: Wrapper) {
   gradleVersion = '2.12'
