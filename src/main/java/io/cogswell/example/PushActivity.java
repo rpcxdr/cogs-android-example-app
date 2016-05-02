@@ -32,19 +32,18 @@ import io.cogswell.sdk.push.GambitResponsePush;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import io.cogswell.example.table.CommonProperties;
 import io.cogswell.example.table.GambitAttribute;
-import io.cogswell.example.table.GambitParameters;
 
 public class PushActivity extends AppCompatActivity  {
     private String accessKey;
-    private String secretKey;
     private String namespaceName;
     private String eventName;
     private String platform;
@@ -84,24 +83,18 @@ public class PushActivity extends AppCompatActivity  {
     protected final ExecutorService executor = Executors.newCachedThreadPool();
 
     private class unRegisterPushService extends AsyncTask<String, Void, String> {
+        GambitRequestPush.Builder builder;
+        Runnable handleUnregisterComplete;
+        public unRegisterPushService(GambitRequestPush.Builder builder, Runnable handleUnregisterComplete) {
+            this.builder = builder;
+            this.handleUnregisterComplete = handleUnregisterComplete;
+        }
 
         @Override
         protected String doInBackground(String... params) {
 
             Future<io.cogswell.sdk.GambitResponse> future = null;
             try {
-                // This will throw an exception if the json is invalid.
-                JSONObject attributes = new JSONObject(attributesJSONAsString);
-
-                GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
-                        accessKey, clientSalt, clientSecret
-                ).setNamespace(namespaceName)
-                        .setAttributes(attributes)
-                        .setUDID(UDID)
-                        .setEnviornment(enviornment)
-                        .setPlatform(platform)
-                        .setPlatformAppID(platform_app_id)
-                        .setMethodName(GambitRequestPush.unregister);
 
                 future = executor.submit(builder.build());
 
@@ -111,27 +104,32 @@ public class PushActivity extends AppCompatActivity  {
                     response = (GambitResponsePush) future.get();
 
                     Log.d("response 2", String.valueOf(response.getMessage()));
-                    final String message = response.getRawBody();
+                    String message = response.getRawBody();
                     Log.d("response", String.valueOf(response.getRawBody()));
-                    activity.runOnUiThread(new Runnable() {
-                        public void run() {
-                            if (!message.equals("") && message != null && !message.isEmpty()) {
-                                new AlertDialog.Builder(activity)
-                                        .setTitle("Please Note!")
-                                        .setMessage(message)
-                                        .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                            public void onClick(DialogInterface dialog, int which) {
 
-                                            }
-                                        })
-                                        .setIcon(android.R.drawable.ic_dialog_alert)
-                                        .show();
-                            }
-                        }
-                    });
+                    String alertTitle;
+                    if (response.getRawCode()==200) {
+                        saveFieldsAsCurrentSubscription();
+                        alertTitle = "Successfully un-subscribed";
+                    } else {
+                        alertTitle = "Un-subscription request failed with code "+response.getRawCode();
+                    }
+                    if (message==null || message.equals("") || message.isEmpty()) {
+                        message = "The server did not send any further details.";
+                    }
+                    message="Attempting to un-subscribing from:\n"+builder.getAttributes().toString(2)+"\nResponse from server:\n"+message;
+                    deleteFieldsForCurrentSubscription();
+                    // If something is waiting for an unsubscribe, call it back.
+                    // For example, a subscription request may want to wait for an un-subscribe first.
+                    Utils.alert(activity, alertTitle, message, handleUnregisterComplete);
 
                 } catch (InterruptedException | ExecutionException ex) {
                     ex.printStackTrace();
+                    StringWriter sw = new StringWriter();
+                    PrintWriter pw = new PrintWriter(sw);
+                    ex.printStackTrace(pw);
+                    String stackTrace = sw.toString();
+                    Utils.alert(activity, "Error executing the un-subscription request", ex.getMessage() + "\n" + stackTrace, null);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -141,19 +139,7 @@ public class PushActivity extends AppCompatActivity  {
                 } else {
                     messageFinal = "Please confirm your keys, ids, and namespace are correct.";
                 }
-                activity.runOnUiThread(new Runnable() {
-                    public void run() {
-                        new AlertDialog.Builder(activity)
-                                .setTitle("Invalid un-subscription data:")
-                                .setMessage(messageFinal)
-                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .show();
-                    }
-                });
+                Utils.alert(activity, "Invalid un-subscription data:", messageFinal, null);
             }
 
             return null;
@@ -198,49 +184,31 @@ public class PushActivity extends AppCompatActivity  {
                 GambitResponsePush response;
                 try {
                     response = (GambitResponsePush) future.get();
-                    final String message = response.getRawBody();
+                    String message = response.getRawBody();
                     Log.d("response", String.valueOf(response.getMessage()));
-                    activity.runOnUiThread(new Runnable() {
-                        public void run() {
-                            if (!message.equals("") && message != null && !message.isEmpty()) {
-                                new AlertDialog.Builder(activity)
-                                        .setTitle("Please Note!")
-                                        .setMessage(message)
-                                        .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                            public void onClick(DialogInterface dialog, int which) {
-
-                                            }
-                                        })
-                                        .setIcon(android.R.drawable.ic_dialog_alert)
-                                        .show();
-                            }
-                        }
-                    });
-
+                    String alertTitle;
+                    if (response.getRawCode()==200) {
+                        saveFieldsAsCurrentSubscription();
+                        alertTitle = "Successfully subscribed";
+                    } else {
+                        alertTitle = "Subscription request failed with code "+response.getRawCode();
+                    }
+                    if (message==null || message.equals("") || message.isEmpty()) {
+                        message = "The server did not send any further details.";
+                    }
+                    message="Attempted to subscribe to:\n"+attributesJSONAsString+"\nResponse from server:\n"+message;
+                    Utils.alert(activity, alertTitle, message, null);
                 } catch (InterruptedException | ExecutionException ex) {
                     ex.printStackTrace();
+                    StringWriter sw = new StringWriter();
+                    PrintWriter pw = new PrintWriter(sw);
+                    ex.printStackTrace(pw);
+                    String stackTrace = sw.toString();
+                    Utils.alert(activity, "Error executing the subscription request", ex.getMessage() + "\n" + stackTrace, null);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                final String messageFinal;
-                if (e instanceof JSONException) {
-                    messageFinal = "The JSON syntax for Attributes as JSON is invalid.";
-                } else {
-                    messageFinal = "Please confirm your keys, ids, and namespace are correct.";
-                }
-                activity.runOnUiThread(new Runnable() {
-                    public void run() {
-                        new AlertDialog.Builder(activity)
-                                .setTitle("Invalid un-subscription data:")
-                                .setMessage(messageFinal)
-                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .show();
-                    }
-                });
+                Utils.alert(activity, "Invalid un-subscription data:", "Please confirm your keys, ids, and namespace are correct. Details: [" + e.getMessage() + "]", null);
             }
 
             return null;
@@ -261,19 +229,69 @@ public class PushActivity extends AppCompatActivity  {
     }
 
     private void rPushService() {
-        if (accessKey == null || accessKey.isEmpty()) {
-            return;
+        if (isSubscribed()) {
+            unregisterSavedSubscription(new Runnable() {
+                public void run() {
+                    new registerPushService().execute("");
+                }
+            });
+        } else {
+            new registerPushService().execute("");
         }
-
-        new registerPushService().execute("");
     }
     private void uPushService() {
         if (accessKey == null || accessKey.isEmpty()) {
+            Utils.alert(activity, "Invalid access key:", "The access key must be entered.", null);
             return;
         }
+        try {
+            // This will throw an exception if the json is invalid.
+            JSONObject attributes = new JSONObject(attributesJSONAsString);
 
+            GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
+                    accessKey, clientSalt, clientSecret
+            ).setNamespace(namespaceName)
+                    .setAttributes(attributes)
+                    .setUDID(UDID)
+                    .setEnviornment(enviornment)
+                    .setPlatform(platform)
+                    .setPlatformAppID(platform_app_id)
+                    .setMethodName(GambitRequestPush.unregister);
 
-        new unRegisterPushService().execute("");
+            new unRegisterPushService(builder, null).execute("");
+        } catch (JSONException e) {
+            Utils.alert(activity, "Invalid un-subscription data:", "The JSON syntax for Attributes as JSON is invalid.", null);
+        }
+    }
+    private void unregisterSavedSubscription(Runnable handleUnregisterComplete) {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        String accessKey = sharedPreferences.getString("subscribed.accessKey", null);
+        String clientSalt = sharedPreferences.getString("subscribed.clientSalt", null);
+        String clientSecret = sharedPreferences.getString("subscribed.clientSecret", null);
+        String platform_app_id = sharedPreferences.getString("subscribed.platform_app_id", null);
+        String namespaceName = sharedPreferences.getString("subscribed.namespaceName", null);
+        String platform = sharedPreferences.getString("subscribed.platform", null);
+        String UDID = sharedPreferences.getString("subscribed.UDID", null);
+        String attributesJSONAsString = sharedPreferences.getString("subscribed.attributes", null);
+        String enviornment = "dev";
+        try {
+            // This will throw an exception if the json is invalid.
+            JSONObject attributes = new JSONObject(attributesJSONAsString);
+
+            GambitRequestPush.Builder builder = new GambitRequestPush.Builder(
+                    accessKey, clientSalt, clientSecret
+            ).setNamespace(namespaceName)
+                    .setAttributes(attributes)
+                    .setUDID(UDID)
+                    .setEnviornment(enviornment)
+                    .setPlatform(platform)
+                    .setPlatformAppID(platform_app_id)
+                    .setMethodName(GambitRequestPush.unregister);
+
+            new unRegisterPushService(builder, handleUnregisterComplete).execute("");
+        } catch (JSONException e) {
+            Utils.alert(activity, "Invalid un-subscription data:", "The JSON syntax for Attributes as JSON is invalid.", null);
+        }
     }
     /*  private class pushService extends AsyncTask<String, Void, String> {
 
@@ -340,38 +358,6 @@ public class PushActivity extends AppCompatActivity  {
     }
     private Activity activity;
 
-
-    private void loadParameters() {
-        GambitParameters parameters = CommonProperties.getParameters();
-
-        if (parameters == null) {
-            return;
-        }
-        if (!parameters.accessKey.isEmpty()) {
-            editTextAccessKey.setText(parameters.accessKey);
-        }
-        if(!parameters.clientSalt.isEmpty()) {
-            editTextClientSalt.setText(parameters.clientSalt);
-        }
-        if(!parameters.clientSecret.isEmpty()) {
-            editTextClientSecret.setText(parameters.clientSecret);
-        }
-        if(!parameters.platform_app_id.isEmpty()) {
-            editTextApplicationID.setText(parameters.platform_app_id);
-        }
-        if(!parameters.platform.isEmpty()) {
-            editTextApplication.setText(parameters.platform);
-        }
-        if(!parameters.udid.isEmpty()) {
-            editTextUUID.setText(parameters.udid);
-        }
-        if(!parameters.namespaceName.isEmpty()) {
-            editTextNamespace.setText(parameters.namespaceName);
-        }
-        // We've loaded from the parameters once - after this, rely on the saved properties.
-        CommonProperties.setParameters(null);
-        saveFields();
-    }
     public boolean validateFields() {
 
         accessKey = editTextAccessKey.getText().toString();
@@ -382,24 +368,24 @@ public class PushActivity extends AppCompatActivity  {
         UDID = editTextUUID.getText().toString();
         namespaceName = editTextNamespace.getText().toString();
 
-        String message = null;
+        String message = "";
         if (accessKey == null || accessKey.equals("") || accessKey.isEmpty() || accessKey.length() < 10) {
-            message = "Access Key is Missing or It's not Correct!";
+            message += "\nAccess Key is Missing or It's not Correct!";
         }
         if (clientSalt == null || clientSalt.equals("") || clientSalt.isEmpty() || clientSalt.length() < 10) {
-            message = "Client Salt is Missing or It's not Correct!";
+            message += "\nClient Salt is Missing or It's not Correct!";
         }
         if (clientSecret == null || clientSecret.equals("") || clientSecret.isEmpty() || clientSecret.length() < 10) {
-            message = "Client Secret is Missing or It's not Correct!";
+            message += "\nClient Secret is Missing or It's not Correct!";
         }
         if (platform == null || platform.equals("") || platform.isEmpty()) {
-            message = "Application is Missing!";
+            message += "\nApplication is Missing!";
         }
         if (platform_app_id == null || platform_app_id.equals("") || platform_app_id.isEmpty()) {
-            message = "Application ID is Missing!";
+            message += "\nApplication ID is Missing!";
         }
         if (UDID == null || UDID.equals("") || UDID.isEmpty()) {
-            message = "UUID is Missing!";
+            message += "\nUUID is Missing!";
         }
         try {
             // Change the field to use the converted JSON so the user clearly sees what the server is seeing.
@@ -408,25 +394,11 @@ public class PushActivity extends AppCompatActivity  {
             editTextAttributes.setText(attributesJSONAsString);
         } catch (Exception e) {
             e.printStackTrace();
-            message = "Attributes as JSON is not valid JSON!";
+            message += "\nAttributes as JSON is not valid JSON!";
         }
 
-        if (message != null) {
-            final String messageFinal = message;
-            activity.runOnUiThread(new Runnable() {
-                public void run() {
-                    new AlertDialog.Builder(activity)
-                            .setTitle("Please Note!")
-                            .setMessage(messageFinal)
-                            .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    // We need to implement this method for the cancel button to appear.
-                                }
-                            })
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .show();
-                }
-            });
+        if (!message.equals("")) {
+            Utils.alert(activity, "Please note:", "Invalid fields:" + message, null);
             return false;
         }
 
@@ -443,7 +415,6 @@ public class PushActivity extends AppCompatActivity  {
         namespaceName = editTextNamespace.getText().toString();
         attributesJSONAsString = editTextAttributes.getText().toString();
 
-
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
         sharedPreferences.edit().putString("accessKey", accessKey).apply();
         sharedPreferences.edit().putString("clientSalt", clientSalt).apply();
@@ -454,6 +425,48 @@ public class PushActivity extends AppCompatActivity  {
         sharedPreferences.edit().putString("namespaceName", namespaceName).apply();
         sharedPreferences.edit().putString("attributes", attributesJSONAsString).apply();
     }
+
+    public void saveFieldsAsCurrentSubscription() {
+        accessKey = editTextAccessKey.getText().toString();
+        clientSalt = editTextClientSalt.getText().toString();
+        clientSecret = editTextClientSecret.getText().toString();
+        platform = "android";//editTextApplication.getText().toString();
+        platform_app_id = editTextApplicationID.getText().toString();
+        UDID = editTextUUID.getText().toString();
+        namespaceName = editTextNamespace.getText().toString();
+        attributesJSONAsString = editTextAttributes.getText().toString();
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        sharedPreferences.edit().putString("subscribed.accessKey", accessKey).apply();
+        sharedPreferences.edit().putString("subscribed.clientSalt", clientSalt).apply();
+        sharedPreferences.edit().putString("subscribed.clientSecret", clientSecret).apply();
+        sharedPreferences.edit().putString("subscribed.platform", platform).apply();
+        sharedPreferences.edit().putString("subscribed.platform_app_id", platform_app_id).apply();
+        sharedPreferences.edit().putString("subscribed.UDID", UDID).apply();
+        sharedPreferences.edit().putString("subscribed.namespaceName", namespaceName).apply();
+        sharedPreferences.edit().putString("subscribed.attributes", attributesJSONAsString).apply();
+    }
+
+    public void deleteFieldsForCurrentSubscription() {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        sharedPreferences.edit().remove("subscribed.accessKey").apply();
+        sharedPreferences.edit().remove("subscribed.clientSalt").apply();
+        sharedPreferences.edit().remove("subscribed.clientSecret").apply();
+        sharedPreferences.edit().remove("subscribed.platform").apply();
+        sharedPreferences.edit().remove("subscribed.platform_app_id").apply();
+        sharedPreferences.edit().remove("subscribed.UDID").apply();
+        sharedPreferences.edit().remove("subscribed.namespaceName").apply();
+        sharedPreferences.edit().remove("subscribed.attributes").apply();
+    }
+
+    public boolean isSubscribed() {
+        // If one "subscribed" value is saved, then they are all saved.
+        // "subscribed" attributes are only saved after a successful subscription,
+        // and deleted after un-subsciption.
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        return sharedPreferences.getString("subscribed.accessKey", null) != null;
+    }
+
     public void fillData() {
         accessKey = editTextAccessKey.getText().toString();
         clientSalt = editTextClientSalt.getText().toString();
@@ -520,7 +533,6 @@ public class PushActivity extends AppCompatActivity  {
         if (sharedPreferences.getString("attributes", null) != null) {
             editTextAttributes.setText(sharedPreferences.getString("attributes", null));
         }
-        loadParameters();
         /*
         editTextAccessKey.setText(accessKey);
         editTextClientSalt.setText(clientSalt);
@@ -552,7 +564,7 @@ public class PushActivity extends AppCompatActivity  {
         buttonRegisterPush.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (wasPushed) {
+                /*if (wasPushed) {
                     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
                     if (sharedPreferences.getString("accessKey", null) != null) {
                         accessKey = sharedPreferences.getString("accessKey", null);
@@ -583,19 +595,21 @@ public class PushActivity extends AppCompatActivity  {
                     }
                     uPushService();
 
-                }
+                }*/
 
                 if(validateFields() == false) {
                     return;
                 }
                 saveFields();
 
+                rPushService();
+                /*
                 Handler handlerTimer = new Handler();
                 handlerTimer.postDelayed(new Runnable() {
                     public void run() {
                         rPushService();
                     }
-                }, 500);
+                }, 500);*/
             }
         });
 
@@ -644,6 +658,7 @@ public class PushActivity extends AppCompatActivity  {
             }
         };
     }
+
     @Override
     protected void onResume() {
         super.onResume();

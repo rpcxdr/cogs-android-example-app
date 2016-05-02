@@ -16,7 +16,6 @@ import io.cogswell.sdk.GambitRequest;
 
 public class StartActivity extends AppCompatActivity  {
 
-    private final String API_BASE_URL = "https://api.cogswell.io/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -25,7 +24,6 @@ public class StartActivity extends AppCompatActivity  {
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
 
-        GambitRequest.setBaseUrl(API_BASE_URL);
         Button buttonEvent = (Button) findViewById(R.id.buttonEvent);
         Button buttonNotification = (Button) findViewById(R.id.buttonNotification);
         RelativeLayout aboutButton = (RelativeLayout) findViewById(R.id.toolbar_about);

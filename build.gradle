@@ -47,18 +47,18 @@ android {
 
 repositories {
   jcenter()
-//  mavenLocal()
+  mavenLocal()
 }
 
 dependencies {
   compile 'com.android.support:multidex:1.0.1'
   compile 'com.android.support:appcompat-v7:22.0.0'
   compile 'com.android.support:design:22.2.1'
-  compile 'io.cogswell:cogs-android-client-sdk:1.0.11'
+  compile 'io.cogswell:cogs-android-client-sdk:1.0.14'
 }
 
 group = 'io.cogswell'
-version = '1.0.11'
+version = '1.0.12'
 
 task wrapper(type: Wrapper) {
   gradleVersion = '2.12'

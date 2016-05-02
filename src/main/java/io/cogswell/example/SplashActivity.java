@@ -2,9 +2,11 @@ package io.cogswell.example;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.util.HashMap;
@@ -12,10 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import io.cogswell.example.table.CommonProperties;
-import io.cogswell.example.table.GambitParameters;
-
 public class SplashActivity extends Activity {
+
+    private Activity activity;
 
     /** Duration of wait **/
     private final int SPLASH_DISPLAY_LENGTH = 2500;
@@ -25,6 +26,8 @@ public class SplashActivity extends Activity {
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         setContentView(R.layout.splash_screen);
+
+        activity = this;
 
         /* New Handler to start the Menu-Activity
          * and close this Splash-Screen after some seconds.*/
@@ -37,39 +40,39 @@ public class SplashActivity extends Activity {
 
             Map<String, String> map = getQueryMap(params);
             Set<String> keys = map.keySet();
-            GambitParameters parameters = new GambitParameters();
+
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+
             for (String key : keys)
             {
                 //Log.d("key", key);
                 //Log.d("value", map.get(key));
+                String value = map.get(key);
                 if (key.equals("access_key")){
-                    parameters.accessKey = map.get(key);
-                } else if (key.equals("secret_key")) {
-                    parameters.secretKey = map.get(key);
+                    sharedPreferences.edit().putString("accessKey", value).apply();
                 } else if (key.equals("namespace")) {
-                    parameters.namespaceName = map.get(key);
+                    sharedPreferences.edit().putString("namespaceName", value).apply();
                 } else if (key.equals("event")) {
-                    parameters.eventName = map.get(key);
+                    sharedPreferences.edit().putString("eventName", value).apply();
                 } else if (key.equals("platform")) {
-                    parameters.platform = map.get(key);
-                } else if (key.equals("enviornment")) {
-                    parameters.enviornment = map.get(key);
+                    sharedPreferences.edit().putString("platform", value).apply();
+                //Environment is currently hard coded to "dev".  When we add UI control, uncomment this.
+                //} else if (key.equals("enviornment")) {
+                //    sharedPreferences.edit().putString("enviornment", value).apply();
                 } else if (key.equals("application_id")) {
-                    parameters.platform_app_id = map.get(key);
+                    sharedPreferences.edit().putString("platform_app_id", value).apply();
                 } else if (key.equals("campaign_id")) {
-                    parameters.campaign_id = Integer.parseInt(map.get(key));
+                    sharedPreferences.edit().putString("campaign_id", value).apply();
                 } else if (key.equals("client_salt")) {
-                    parameters.clientSalt = map.get(key);
+                    sharedPreferences.edit().putString("clientSalt", value).apply();
                 } else if (key.equals("client_secret")) {
-                    parameters.clientSecret = map.get(key);
+                    sharedPreferences.edit().putString("clientSecret", value).apply();
                 } else if (key.equals("debug_directive")) {
-                    parameters.debug_directive = map.get(key);
+                    sharedPreferences.edit().putString("accessKey", value).apply();
                 } else if (key.equals("udid")) {
-                    parameters.udid = map.get(key);
+                    sharedPreferences.edit().putString("UDID", value).apply();
                 }
             }
-            CommonProperties.setParameters(parameters);
-
         }
         new Handler().postDelayed(new Runnable(){
             @Override

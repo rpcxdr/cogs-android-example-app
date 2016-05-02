@@ -107,7 +107,7 @@
             android:layout_height="150dp"
             android:hint="Attributes as JSON"
             android:text="@string/attributes"
-            />
+            android:gravity="top" />
         </android.support.design.widget.TextInputLayout>
 
 

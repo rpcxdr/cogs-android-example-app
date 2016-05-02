@@ -38,13 +38,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import io.cogswell.example.table.CommonProperties;
 import io.cogswell.example.table.GambitAttribute;
-import io.cogswell.example.table.GambitParameters;
 
 public class EventActivity extends AppCompatActivity  {
     private String accessKey;
-    private String secretKey;
     private String namespaceName;
     private String eventName;
     private String attributesJSONAsString;
@@ -98,12 +95,12 @@ public class EventActivity extends AppCompatActivity  {
                 Log.d("clientSalt", clientSalt);
                 Log.d("clientSecret", clientSecret);
                 Log.d("attributesJSONAsString", attributesJSONAsString.toString());
-                Log.d("clientSecret2", clientSecret);
                 Future<io.cogswell.sdk.GambitResponse> future = null;
                 try {
                     future = executor.submit(builder.build());
                 } catch (Exception e) {
                     e.printStackTrace();
+                    Utils.alert(activity, "Error building message request", null, e, null);
                 }
 
                 Log.d("future", String.valueOf(future));
@@ -115,16 +112,18 @@ public class EventActivity extends AppCompatActivity  {
                     activity.runOnUiThread(new Runnable() {
                         public void run() {
                             if (!responseMessage.equals("") && responseMessage != null && !responseMessage.isEmpty()) {
-                                new AlertDialog.Builder(activity)
-                                        .setTitle("Message Response")
-                                        .setMessage(responseMessage)
-                                        .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                            public void onClick(DialogInterface dialog, int which) {
-
-                                            }
-                                        })
-                                        .setIcon(android.R.drawable.ic_dialog_alert)
-                                        .show();
+                                String prettyResponseMessage = responseMessage;
+                                try {
+                                    // Attempt to pretty-print the JSON.
+                                    JSONObject responseJSON = new JSONObject(responseMessage);
+                                    String message = responseJSON.getString("message");
+                                    JSONObject responseMessageJSON = new JSONObject(message);
+                                    prettyResponseMessage = Utils.unescapeJavaString(responseMessageJSON.toString(2));
+                                } catch (JSONException je) {
+                                    Log.w("response message", "Invalid JSON: "+responseMessage, je);
+                                    // If we can't parse the json, default to just showing the response text.
+                                }
+                                Utils.alert(activity, "Message Response", prettyResponseMessage, null);
                             }
                         }
                     });
@@ -134,6 +133,7 @@ public class EventActivity extends AppCompatActivity  {
                 } catch (Exception ex) {
                     Log.d("extest", ex.getLocalizedMessage());
                     ex.printStackTrace();
+                    Utils.alert(activity, "Error getting message details", null, ex, null);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -143,19 +143,8 @@ public class EventActivity extends AppCompatActivity  {
                 } else {
                     messageFinal = "Please confirm your keys, ids, and namespace are correct.";
                 }
-                activity.runOnUiThread(new Runnable() {
-                    public void run() {
-                        new AlertDialog.Builder(activity)
-                                .setTitle("Invalid un-subscription data:")
-                                .setMessage(messageFinal)
-                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .show();
-                    }
-                });
+
+                Utils.alert(activity, "Invalid data used to query for message details", messageFinal,null);
             }
 
             return null;
@@ -210,6 +199,7 @@ public class EventActivity extends AppCompatActivity  {
                     future = GambitSDKService.getInstance().sendGambitEvent(builder);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    Utils.alert(activity, "Error sending event", null, e, null);
                 }
 
                 GambitResponseEvent response;
@@ -224,6 +214,7 @@ public class EventActivity extends AppCompatActivity  {
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
+                    Utils.alert(activity, "Error getting event response", null, ex, null);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -233,20 +224,7 @@ public class EventActivity extends AppCompatActivity  {
                 } else {
                     messageFinal = "Please confirm your keys, ids, and namespace are correct.";
                 }
-                activity.runOnUiThread(new Runnable() {
-                    public void run() {
-                        new AlertDialog.Builder(activity)
-                                .setTitle("Invalid un-subscription data:")
-                                .setMessage(messageFinal)
-                                .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .show();
-                    }
-                });
-
+                Utils.alert(activity, "Invalid event data", messageFinal, null);
             }
 
             return null;
@@ -266,37 +244,6 @@ public class EventActivity extends AppCompatActivity  {
     }
 
     private Activity activity;
-
-    private void loadParameters() {
-        GambitParameters parameters = CommonProperties.getParameters();
-        if (parameters == null) {
-            return;
-        }
-        if (!parameters.accessKey.isEmpty()) {
-            //Log.d("parameters.accessKey", parameters.accessKey);
-            editTextAccessKey.setText(parameters.accessKey);
-        }
-        if(!parameters.clientSalt.isEmpty()) {
-            editTextClientSalt.setText(parameters.clientSalt);
-        }
-        if(!parameters.clientSecret.isEmpty()) {
-            //Log.d("parameters.clientSecret", parameters.clientSecret);
-            editTextClientSecret.setText(parameters.clientSecret);
-        }
-        if(parameters.campaign_id != 0) {
-            editTextCampaignID.setText(String.valueOf(parameters.campaign_id));
-        }
-        if(!parameters.namespaceName.isEmpty()) {
-            editTextNamespace.setText(parameters.namespaceName);
-        }
-        if(!parameters.eventName.isEmpty()) {
-            editTextEventName.setText(parameters.eventName);
-        }
-        if(!parameters.debug_directive.isEmpty()) {
-            buttonDebugDirective.setChecked(true);
-        }
-    }
-
 
     public boolean validateFields() {
 
@@ -338,21 +285,7 @@ public class EventActivity extends AppCompatActivity  {
         }
 
         if (message != null) {
-            final String messageFinal = message;
-            activity.runOnUiThread(new Runnable() {
-                public void run() {
-                    new AlertDialog.Builder(activity)
-                            .setTitle("Please Note!")
-                            .setMessage(messageFinal)
-                            .setPositiveButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    // We need to implement this method for the cancel button to appear.
-                                }
-                            })
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .show();
-                }
-            });
+            Utils.alert(activity, "Missing event data:", message, null);
             return false;
         }
 
@@ -470,7 +403,6 @@ public class EventActivity extends AppCompatActivity  {
 
         }
 
-        loadParameters();
        /* editTextAccessKey.setText(accessKey);
         editTextClientSalt.setText(clientSalt);
         editTextClientSecret.setText(clientSecret);
@@ -510,13 +442,13 @@ public class EventActivity extends AppCompatActivity  {
             @Override
             public void onClick(View v) {
 
-                if(validateFields() == false) {
-                    return;
-                }
+            if(validateFields() == false) {
+                return;
+            }
 
-                saveFields();
+            saveFields();
 
-                new event().execute("");
+            new event().execute("");
             }
         });
 
